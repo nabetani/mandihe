@@ -33,17 +33,24 @@ const craetePassword = (myKey, pKey) => {
 
 const makePassword = async (buffer) => {
   const raw = await crypto.subtle.digest('SHA-512', buffer);
-  const hashArray = Array.from(new Uint16Array(raw));                     // convert buffer to byte array
+  const hashArray = Array.from(new Uint32Array(raw));                     // convert buffer to byte array
   const chars = "34679acdefghjkmnprstuvwxyzACDEFGHJKLMNPQRTUVWXY";
-  const charlen = chars.length;
-  return hashArray.slice(10).map(b => chars[b % charlen] + chars[(b / charlen | 0) % charlen]).join("");
+  const tostr = (b) => {
+    let s = "";
+    for (let i = 0; i < 5; i++) {
+      s += chars[b % chars.length];
+      b = (b / chars.length) | 0;
+    };
+    return s;
+  };
+  return hashArray.map(b => tostr(b)).join("").substr(0, 20);
 };
 
 const digest = async (buffer) => {
   const raw = await crypto.subtle.digest('SHA-256', buffer);
   // hash the message
   const hashArray = Array.from(new Uint16Array(raw));                     // convert buffer to byte array
-  return hashArray.map(b => b.toString(16).padStart(4, '0')).join('-');
+  return hashArray.slice(0, 4).map(b => b.toString(16).padStart(4, '0')).join('-');
 };
 
 const importFromDom = async (o, domId) => {
