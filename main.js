@@ -9,7 +9,6 @@ let global_keyPair = null;
 const createMyKey = async (e) => {
   let jwkText = localStorage.getItem(storageKey());
   if (jwkText) {
-    console.log(jwkText);
     const jwks = JSON.parse(jwkText);
     let privateKey = await crypto.subtle.importKey(
       'jwk',
@@ -26,7 +25,6 @@ const createMyKey = async (e) => {
       []
     );
     const keyPair = { privateKey: privateKey, publicKey: publicKey };
-    console.log(keyPair);
     global_keyPair = keyPair;
     let publicJwk = await crypto.subtle.exportKey('jwk', keyPair.publicKey);
     let text = JSON.stringify(publicJwk, null, "\t");
@@ -95,7 +93,7 @@ const importFromDom = async (o, domId) => {
       public: kp
     },
     global_keyPair.privateKey, //your ECDH private key from generateKey or importKey
-    128 //the number of bits you want to derive
+    528 //the number of bits you want to derive
   );
   id("password").value = await makePassword(buffer);
   id("digest").value = await digest(buffer);
