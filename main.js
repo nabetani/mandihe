@@ -8,17 +8,43 @@ let global_keyPair = null;
 
 const createMyKey = async (e) => {
   let jwkText = localStorage.getItem(storageKey());
-  if (false && jwkText) {
-    e.value = jwkText;
+  if (jwkText) {
+    console.log(jwkText);
+    const jwks = JSON.parse(jwkText);
+    let privateKey = await crypto.subtle.importKey(
+      'jwk',
+      jwks["private"],
+      { name: 'ECDH', namedCurve: 'P-521' },
+      true,
+      ['deriveBits']
+    );
+    let publicKey = await crypto.subtle.importKey(
+      'jwk',
+      jwks["public"],
+      { name: 'ECDH', namedCurve: 'P-521' },
+      true,
+      []
+    );
+    const keyPair = { privateKey: privateKey, publicKey: publicKey };
+    console.log(keyPair);
+    global_keyPair = keyPair;
+    let publicJwk = await crypto.subtle.exportKey('jwk', keyPair.publicKey);
+    let text = JSON.stringify(publicJwk, null, "\t");
+    e.value = text;
   } else {
     let keyPair = await crypto.subtle.generateKey(
       { name: 'ECDH', namedCurve: 'P-521' },
       true,
-      ['deriveKey', 'deriveBits']
+      ['deriveBits']
     );
     global_keyPair = keyPair;
-    let jwk = await crypto.subtle.exportKey('jwk', keyPair.publicKey);
-    let text = JSON.stringify(jwk, null, "\t");
+    let privateJwk = await crypto.subtle.exportKey('jwk', keyPair.privateKey);
+    let publicJwk = await crypto.subtle.exportKey('jwk', keyPair.publicKey);
+    localStorage.setItem(storageKey(), JSON.stringify({
+      private: privateJwk,
+      public: publicJwk
+    }));
+    let text = JSON.stringify(publicJwk, null, "\t");
     e.value = text;
   }
 };
