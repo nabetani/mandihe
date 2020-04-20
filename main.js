@@ -55,9 +55,8 @@ const craetePassword = (myKey, pKey) => {
   global_keyPair.deriveKey
 };
 
-const makePassword = async (buffer) => {
-  const raw = await crypto.subtle.digest('SHA-512', buffer);
-  const hashArray = Array.from(new Uint32Array(raw));                     // convert buffer to byte array
+const makePassword = async (raw) => {
+  const hashArray = Array.from(new Uint32Array(raw));
   const chars = "34679acdefghjkmnprstuvwxyzACDEFGHJKLMNPQRTUVWXY";
   const tostr = (b) => {
     let s = "";
@@ -72,8 +71,7 @@ const makePassword = async (buffer) => {
 
 const digest = async (buffer) => {
   const raw = await crypto.subtle.digest('SHA-256', buffer);
-  // hash the message
-  const hashArray = Array.from(new Uint16Array(raw));                     // convert buffer to byte array
+  const hashArray = Array.from(new Uint16Array(raw));
   return hashArray.slice(0, 4).map(b => b.toString(16).padStart(4, '0')).join('-');
 };
 
@@ -95,8 +93,9 @@ const importFromDom = async (o, domId) => {
     global_keyPair.privateKey, //your ECDH private key from generateKey or importKey
     528 //the number of bits you want to derive
   );
-  id("password").value = await makePassword(buffer);
-  id("digest").value = await digest(buffer);
+  const raw = await crypto.subtle.digest('SHA-512', buffer);
+  id("password").value = await makePassword(raw);
+  id("digest").value = await digest(raw);
 }
 
 const main = () => {
