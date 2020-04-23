@@ -1,13 +1,81 @@
 'use strict';
 
+const jwtStorePassword = () => {
+  return null;
+};
+
 const storageKey = () => {
-  "hoge";
+  return window.location.href + "nabetani-jwt-store.7ohn8p94ao9xd35ngq2afs5nk";
+};
+
+const aesCtrCounter = () => {
+  return new Uint8Array([28, 218, 254, 122, 26, 138, 159, 102, 32, 253, 52, 126, 127, 200, 218, 90]);
+};
+
+const getKey = async () => {
+  const salt = "salt[24aii8j6l2172ipu570jm510w]";
+  let passwordUint8Array = (new TextEncoder()).encode(salt + jwtStorePassword());
+  let digest = await crypto.subtle.digest(
+    { name: 'SHA-256' },
+    passwordUint8Array
+  );
+  let key = await crypto.subtle.importKey(
+    "raw",
+    digest,
+    { name: "AES-CTR", },
+    false,
+    ["encrypt", "decrypt"]
+  )
+  return key;
+};
+
+const encryptA = async (msg) => {
+  let te = new TextEncoder()
+  let e = await crypto.subtle.encrypt(
+    {
+      name: "AES-CTR",
+      counter: aesCtrCounter(),
+      length: 64
+    },
+    await getKey(),
+    te.encode(msg)
+  );
+  return JSON.stringify(Array.from(new Uint8Array(e)));
+};
+
+const decryptA = async (ciphertext) => {
+  let key = await getKey();
+  let data = (new Uint8Array(JSON.parse(ciphertext))).buffer;
+  let bytes = await crypto.subtle.decrypt(
+    {
+      name: "AES-CTR",
+      counter: aesCtrCounter(),
+      length: 64
+    },
+    key,
+    data
+  );
+  let r = (new TextDecoder()).decode(bytes);
+  return r;
+}
+const getJwt = async () => {
+  let e = localStorage.getItem(storageKey());
+  if (e == null || e == undefined) {
+    return null;
+  }
+  return await decryptA(e);
+};
+
+const setJwt = async (o) => {
+  let p = JSON.stringify(o);
+  let e = await encryptA(p);
+  localStorage.setItem(storageKey(), e);
 };
 
 let global_keyPair = null;
 
 const createMyKey = async (e) => {
-  let jwkText = localStorage.getItem(storageKey());
+  let jwkText = await getJwt();
   if (jwkText) {
     const jwks = JSON.parse(jwkText);
     let privateKey = await crypto.subtle.importKey(
@@ -38,10 +106,10 @@ const createMyKey = async (e) => {
     global_keyPair = keyPair;
     let privateJwk = await crypto.subtle.exportKey('jwk', keyPair.privateKey);
     let publicJwk = await crypto.subtle.exportKey('jwk', keyPair.publicKey);
-    localStorage.setItem(storageKey(), JSON.stringify({
+    await setJwt({
       private: privateJwk,
       public: publicJwk
-    }));
+    });
     let text = JSON.stringify(publicJwk, null, "\t");
     e.value = text;
   }
@@ -49,10 +117,6 @@ const createMyKey = async (e) => {
 
 const id = (str) => {
   return document.getElementById(str);
-};
-
-const craetePassword = (myKey, pKey) => {
-  global_keyPair.deriveKey
 };
 
 const makePassword = async (raw) => {
@@ -99,6 +163,10 @@ const importFromDom = async (o, domId) => {
 }
 
 const main = () => {
+  if (!jwtStorePassword()) {
+    alert('you must change function "jwtStorePassword()" to return your private password.');
+    return;
+  }
   let mykey = id("mykey");
   createMyKey(mykey);
   id("create").onclick = () => {
