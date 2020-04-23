@@ -19,9 +19,12 @@
   %button#import パスワードを生成する
 %h2 パスワード
 %p
-  このパスワードは決してインターネットなどに流してはいけません:
-  %br
-  %input#password{ type:"text", readonly:true, value:"", size:50 }
+  以下のパスワードは決してインターネットなどに流してはいけません:
+  -5.times do |ix|
+    %br
+    -text_id="password#{ix}"
+    %label{ for:text_id } パスワード ##{ix}
+    %input{ id:text_id, type:"text", readonly:true, value:"", size:50 }
 %h2 ダイジェスト
 %p
   パスワード生成後、この文字列をメールなどでパートナーに伝えます:
