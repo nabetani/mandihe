@@ -119,7 +119,10 @@ const id = (str) => {
   return document.getElementById(str);
 };
 
-const makePassword = async (raw) => {
+const makePassword = async (i, buffer0) => {
+  let ary = [i].concat(Array.from(new Uint8Array(buffer0)));
+  let buffer = (new Uint8Array(ary)).buffer;
+  const raw = await crypto.subtle.digest('SHA-256', buffer);
   const hashArray = Array.from(new Uint32Array(raw));
   const chars = "34679acdefghjkmnprstuvwxyzACDEFGHJKLMNPQRTUVWXY";
   const tostr = (b) => {
@@ -157,9 +160,10 @@ const importFromDom = async (o, domId) => {
     global_keyPair.privateKey, //your ECDH private key from generateKey or importKey
     528 //the number of bits you want to derive
   );
-  const raw = await crypto.subtle.digest('SHA-512', buffer);
-  id("password").value = await makePassword(raw);
-  id("digest").value = await digest(raw);
+  for (let i of [0, 1, 2, 3, 4]) {
+    id(`password${i}`).value = await makePassword(i, buffer);
+  }
+  id("digest").value = await digest(buffer);
 }
 
 const main = () => {
