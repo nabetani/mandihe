@@ -3,264 +3,37 @@
 <meta charset='utf-8'>
 <script>
   'use strict';
-  
-  const jwtStorePassword = () => {
-    return null;
-  };
-  
-  const storageKey = () => {
-    return window.location.href + "nabetani-jwt-store.7ohn8p94ao9xd35ngq2afs5nk";
-  };
-  
-  const aesCtrCounter = () => {
-    return new Uint8Array([28, 218, 254, 122, 26, 138, 159, 102, 32, 253, 52, 126, 127, 200, 218, 90]);
-  };
-  
-  const getKey = async () => {
-    const salt = "salt[24aii8j6l2172ipu570jm510w]";
-    let passwordUint8Array = (new TextEncoder()).encode(salt + jwtStorePassword());
-    let digest = await crypto.subtle.digest(
-      { name: 'SHA-256' },
-      passwordUint8Array
-    );
-    let key = await crypto.subtle.importKey(
-      "raw",
-      digest,
-      { name: "AES-CTR", },
-      false,
-      ["encrypt", "decrypt"]
-    )
-    return key;
-  };
-  
-  const encryptA = async (msg) => {
-    let te = new TextEncoder()
-    let e = await crypto.subtle.encrypt(
-      {
-        name: "AES-CTR",
-        counter: aesCtrCounter(),
-        length: 64
-      },
-      await getKey(),
-      te.encode(msg)
-    );
-    return JSON.stringify(Array.from(new Uint8Array(e)));
-  };
-  
-  const decryptA = async (ciphertext) => {
-    let key = await getKey();
-    let data = (new Uint8Array(JSON.parse(ciphertext))).buffer;
-    let bytes = await crypto.subtle.decrypt(
-      {
-        name: "AES-CTR",
-        counter: aesCtrCounter(),
-        length: 64
-      },
-      key,
-      data
-    );
-    let r = (new TextDecoder()).decode(bytes);
-    return r;
-  }
-  const getJwt = async () => {
-    let e = localStorage.getItem(storageKey());
-    if (e == null || e == undefined) {
-      return null;
-    }
-    return await decryptA(e);
-  };
-  
-  const setJwt = async (o) => {
-    let p = JSON.stringify(o);
-    let e = await encryptA(p);
-    localStorage.setItem(storageKey(), e);
-  };
-  
-  let global_keyPair = null;
-  
-  const createMyKey = async (e) => {
-    let jwkText = await getJwt();
-    if (jwkText) {
-      const jwks = JSON.parse(jwkText);
-      let privateKey = await crypto.subtle.importKey(
-        'jwk',
-        jwks["private"],
-        { name: 'ECDH', namedCurve: 'P-521' },
-        true,
-        ['deriveBits']
-      );
-      let publicKey = await crypto.subtle.importKey(
-        'jwk',
-        jwks["public"],
-        { name: 'ECDH', namedCurve: 'P-521' },
-        true,
-        []
-      );
-      const keyPair = { privateKey: privateKey, publicKey: publicKey };
-      global_keyPair = keyPair;
-      let publicJwk = await crypto.subtle.exportKey('jwk', keyPair.publicKey);
-      let text = JSON.stringify(publicJwk, null, "\t");
-      e.value = text;
-    } else {
-      let keyPair = await crypto.subtle.generateKey(
-        { name: 'ECDH', namedCurve: 'P-521' },
-        true,
-        ['deriveBits']
-      );
-      global_keyPair = keyPair;
-      let privateJwk = await crypto.subtle.exportKey('jwk', keyPair.privateKey);
-      let publicJwk = await crypto.subtle.exportKey('jwk', keyPair.publicKey);
-      await setJwt({
-        private: privateJwk,
-        public: publicJwk
-      });
-      let text = JSON.stringify(publicJwk, null, "\t");
-      e.value = text;
-    }
-  };
-  
   const id = (str) => {
     return document.getElementById(str);
   };
-  
-  const makePassword = async (i, buffer0) => {
-    let ary = [i].concat(Array.from(new Uint8Array(buffer0)));
-    let buffer = (new Uint8Array(ary)).buffer;
-    const raw = await crypto.subtle.digest('SHA-256', buffer);
-    const hashArray = Array.from(new Uint32Array(raw));
-    const chars = "34679acdefghjkmnprstuvwxyzACDEFGHJKLMNPQRTUVWXY";
-    const tostr = (b) => {
-      let s = "";
-      for (let i = 0; i < 5; i++) {
-        s += chars[b % chars.length];
-        b = (b / chars.length) | 0;
-      };
-      return s;
-    };
-    return hashArray.map(b => tostr(b)).join("").substr(0, 20);
+  const createNewKey = ()=>{
+    let u32a = new Uint32Array(7);
+    crypto.getRandomValues(u32a);
+    let r="";
+    const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    for( let u of Array.from(u32a) ){
+      for( let i=0 ; i<5 ; i++ ){
+        r+=chars[u%chars.length];
+        u  = (u/chars.length) | 0;
+      }
+    }
+    console.log(r);
+    return r;
   };
-  
-  const digest = async (buffer) => {
-    const raw = await crypto.subtle.digest('SHA-256', buffer);
-    const hashArray = Array.from(new Uint16Array(raw));
-    return hashArray.slice(0, 4).map(b => b.toString(16).padStart(4, '0')).join('-');
-  };
-  
-  const importFromDom = async (o, domId) => {
-    const jwk = JSON.parse(id(domId).value);
-    let kp = await crypto.subtle.importKey(
-      'jwk',
-      jwk,
-      { name: 'ECDH', namedCurve: 'P-521' },
-      false,
-      []
-    );
-    let buffer = await crypto.subtle.deriveBits(
-      {
-        name: "ECDH",
-        namedCurve: "P-521", //can be "P-256", "P-384", or "P-521"
-        public: kp
-      },
-      global_keyPair.privateKey, //your ECDH private key from generateKey or importKey
-      528 //the number of bits you want to derive
-    );
-    for (let i of [0, 1, 2, 3, 4]) {
-      id(`password${i}`).value = await makePassword(i, buffer);
-    }
-    id("digest").value = await digest(buffer);
-  }
-  
-  const main = () => {
-    if (!jwtStorePassword()) {
-      alert('you must change function "jwtStorePassword()" to return your private password.');
-      return;
-    }
-    let mykey = id("mykey");
-    createMyKey(mykey);
-    id("create").onclick = () => {
-      localStorage.removeItem(storageKey())
-      createMyKey(mykey);
-    };
-    id("import").onclick = () => {
-      let o = {};
-      importFromDom(o, "partnerskey");
-    }
+  const main = ()=>{
+    const orgkey = "2vHf9XS0qAxVtyZF4bx02PsHepm4Z2lb";
+    const newkey = createNewKey();
+    const srcText = "\u{3c}!DOCTYPE html\u{3e}\u{a}\u{3c}head\u{3e}\u{a}\u{3c}meta charset=\u{27}utf-8\u{27}\u{3e}\u{a}\u{3c}script\u{3e}\u{a}  \u{27}use strict\u{27};\u{a}  const jwtStorePassword = () =\u{3e} {\u{a}    return \u{22}2vHf9XS0qAxVtyZF4bx02PsHepm4Z2lb\u{22};\u{a}  };\u{a}  const storageKey = () =\u{3e} {\u{a}    return window.location.href + \u{22}nabetani-jwt-store.7ohn8p94ao9xd35ngq2afs5nk\u{22};\u{a}  };\u{a}  const aesCtrCounter = () =\u{3e} {\u{a}    return new Uint8Array([28, 218, 254, 122, 26, 138, 159, 102, 32, 253, 52, 126, 127, 200, 218, 90]);\u{a}  };\u{a}  const getKey = async () =\u{3e} {\u{a}    const salt = \u{22}salt[24aii8j6l2172ipu570jm510w]\u{22};\u{a}    let passwordUint8Array = (new TextEncoder()).encode(salt + jwtStorePassword());\u{a}    let digest = await crypto.subtle.digest(\u{a}      { name: \u{27}SHA-256\u{27} },\u{a}      passwordUint8Array\u{a}    );\u{a}    let key = await crypto.subtle.importKey(\u{a}      \u{22}raw\u{22},\u{a}      digest,\u{a}      { name: \u{22}AES-CTR\u{22}, },\u{a}      false,\u{a}      [\u{22}encrypt\u{22}, \u{22}decrypt\u{22}]\u{a}    )\u{a}    return key;\u{a}  };\u{a}  const encryptA = async (msg) =\u{3e} {\u{a}    let te = new TextEncoder()\u{a}    let e = await crypto.subtle.encrypt(\u{a}      {\u{a}        name: \u{22}AES-CTR\u{22},\u{a}        counter: aesCtrCounter(),\u{a}        length: 64\u{a}      },\u{a}      await getKey(),\u{a}      te.encode(msg)\u{a}    );\u{a}    return JSON.stringify(Array.from(new Uint8Array(e)));\u{a}  };\u{a}  const decryptA = async (ciphertext) =\u{3e} {\u{a}    let key = await getKey();\u{a}    let data = (new Uint8Array(JSON.parse(ciphertext))).buffer;\u{a}    let bytes = await crypto.subtle.decrypt(\u{a}      {\u{a}        name: \u{22}AES-CTR\u{22},\u{a}        counter: aesCtrCounter(),\u{a}        length: 64\u{a}      },\u{a}      key,\u{a}      data\u{a}    );\u{a}    let r = (new TextDecoder()).decode(bytes);\u{a}    return r;\u{a}  }\u{a}  const getJwt = async () =\u{3e} {\u{a}    let e = localStorage.getItem(storageKey());\u{a}    if (e == null || e == undefined) {\u{a}      return null;\u{a}    }\u{a}    return await decryptA(e);\u{a}  };\u{a}  const setJwt = async (o) =\u{3e} {\u{a}    let p = JSON.stringify(o);\u{a}    let e = await encryptA(p);\u{a}    localStorage.setItem(storageKey(), e);\u{a}  };\u{a}  let global_keyPair = null;\u{a}  const createMyKey = async (e) =\u{3e} {\u{a}    let jwkText = await getJwt();\u{a}    if (jwkText) {\u{a}      const jwks = JSON.parse(jwkText);\u{a}      let privateKey = await crypto.subtle.importKey(\u{a}        \u{27}jwk\u{27},\u{a}        jwks[\u{22}private\u{22}],\u{a}        { name: \u{27}ECDH\u{27}, namedCurve: \u{27}P-521\u{27} },\u{a}        true,\u{a}        [\u{27}deriveBits\u{27}]\u{a}      );\u{a}      let publicKey = await crypto.subtle.importKey(\u{a}        \u{27}jwk\u{27},\u{a}        jwks[\u{22}public\u{22}],\u{a}        { name: \u{27}ECDH\u{27}, namedCurve: \u{27}P-521\u{27} },\u{a}        true,\u{a}        []\u{a}      );\u{a}      const keyPair = { privateKey: privateKey, publicKey: publicKey };\u{a}      global_keyPair = keyPair;\u{a}      let publicJwk = await crypto.subtle.exportKey(\u{27}jwk\u{27}, keyPair.publicKey);\u{a}      let text = JSON.stringify(publicJwk, null, \u{22}\u{5c}t\u{22});\u{a}      e.value = text;\u{a}    } else {\u{a}      let keyPair = await crypto.subtle.generateKey(\u{a}        { name: \u{27}ECDH\u{27}, namedCurve: \u{27}P-521\u{27} },\u{a}        true,\u{a}        [\u{27}deriveBits\u{27}]\u{a}      );\u{a}      global_keyPair = keyPair;\u{a}      let privateJwk = await crypto.subtle.exportKey(\u{27}jwk\u{27}, keyPair.privateKey);\u{a}      let publicJwk = await crypto.subtle.exportKey(\u{27}jwk\u{27}, keyPair.publicKey);\u{a}      await setJwt({\u{a}        private: privateJwk,\u{a}        public: publicJwk\u{a}      });\u{a}      let text = JSON.stringify(publicJwk, null, \u{22}\u{5c}t\u{22});\u{a}      e.value = text;\u{a}    }\u{a}  };\u{a}  const id = (str) =\u{3e} {\u{a}    return document.getElementById(str);\u{a}  };\u{a}  const makePassword = async (i, buffer0) =\u{3e} {\u{a}    let ary = [i].concat(Array.from(new Uint8Array(buffer0)));\u{a}    let buffer = (new Uint8Array(ary)).buffer;\u{a}    const raw = await crypto.subtle.digest(\u{27}SHA-256\u{27}, buffer);\u{a}    const hashArray = Array.from(new Uint32Array(raw));\u{a}    const chars = \u{22}34679acdefghjkmnprstuvwxyzACDEFGHJKLMNPQRTUVWXY\u{22};\u{a}    const tostr = (b) =\u{3e} {\u{a}      let s = \u{22}\u{22};\u{a}      for (let i = 0; i \u{3c} 5; i++) {\u{a}        s += chars[b % chars.length];\u{a}        b = (b \u{2f} chars.length) | 0;\u{a}      };\u{a}      return s;\u{a}    };\u{a}    return hashArray.map(b =\u{3e} tostr(b)).join(\u{22}\u{22}).substr(0, 20);\u{a}  };\u{a}  const digest = async (buffer) =\u{3e} {\u{a}    const raw = await crypto.subtle.digest(\u{27}SHA-256\u{27}, buffer);\u{a}    const hashArray = Array.from(new Uint16Array(raw));\u{a}    return hashArray.slice(0, 4).map(b =\u{3e} b.toString(16).padStart(4, \u{27}0\u{27})).join(\u{27}-\u{27});\u{a}  };\u{a}  const importFromDom = async (o, domId) =\u{3e} {\u{a}    const jwk = JSON.parse(id(domId).value);\u{a}    let kp = await crypto.subtle.importKey(\u{a}      \u{27}jwk\u{27},\u{a}      jwk,\u{a}      { name: \u{27}ECDH\u{27}, namedCurve: \u{27}P-521\u{27} },\u{a}      false,\u{a}      []\u{a}    );\u{a}    let buffer = await crypto.subtle.deriveBits(\u{a}      {\u{a}        name: \u{22}ECDH\u{22},\u{a}        namedCurve: \u{22}P-521\u{22}, \u{2f}\u{2f}can be \u{22}P-256\u{22}, \u{22}P-384\u{22}, or \u{22}P-521\u{22}\u{a}        public: kp\u{a}      },\u{a}      global_keyPair.privateKey, \u{2f}\u{2f}your ECDH private key from generateKey or importKey\u{a}      528 \u{2f}\u{2f}the number of bits you want to derive\u{a}    );\u{a}    for (let i of [0, 1, 2, 3, 4]) {\u{a}      id(`password${i}`).value = await makePassword(i, buffer);\u{a}    }\u{a}    id(\u{22}digest\u{22}).value = await digest(buffer);\u{a}  }\u{a}  const main = () =\u{3e} {\u{a}    if (!jwtStorePassword()) {\u{a}      alert(\u{27}you must change function \u{22}jwtStorePassword()\u{22} to return your private password.\u{27});\u{a}      return;\u{a}    }\u{a}    let mykey = id(\u{22}mykey\u{22});\u{a}    createMyKey(mykey);\u{a}    id(\u{22}create\u{22}).onclick = () =\u{3e} {\u{a}      localStorage.removeItem(storageKey())\u{a}      createMyKey(mykey);\u{a}    };\u{a}    id(\u{22}import\u{22}).onclick = () =\u{3e} {\u{a}      let o = {};\u{a}      importFromDom(o, \u{22}partnerskey\u{22});\u{a}    }\u{a}  };\u{a}\u{3c}\u{2f}script\u{3e}\u{a}\u{3c}style\u{3e}\u{a}  h1{\u{a}    border-top : solid 2px #bbb;\u{a}    border-left : solid 16px #bbb;\u{a}    background-color: #f8f8f8;\u{a}  }\u{a}  h2{\u{a}    border-top : solid 2px #bbb;\u{a}    border-left : solid 8px #bbb;\u{a}    background-color: #f8f8f8;\u{a}  }\u{a}  h3{\u{a}    border-top : solid 1px #bbb;\u{a}    border-left : solid 4px #bbb;\u{a}    background-color: #f8f8f8;\u{a}  }\u{a}  h4{\u{a}    background-color: #f8f8f8;\u{a}  }\u{a}  .code-text{\u{a}    font-family:monospace;\u{a}    font-size:11pt;\u{a}  }\u{a}  button{\u{a}    font-size:11pt;\u{a}    font-weight:bold;\u{a}  }\u{a}\u{3c}\u{2f}style\u{3e}\u{a}\u{3c}\u{2f}head\u{3e}\u{a}\u{3c}h1\u{3e}\u{e9}\u{8d}\u{b5}\u{e4}\u{ba}\u{a4}\u{e6}\u{8f}\u{9b}\u{e6}\u{94}\u{af}\u{e6}\u{8f}\u{b4}\u{3c}\u{2f}h1\u{3e}\u{a}\u{3c}h2\u{3e}\u{e8}\u{87}\u{aa}\u{e5}\u{88}\u{86}\u{e3}\u{81}\u{ae}\u{e9}\u{8d}\u{b5}\u{3c}\u{2f}h2\u{3e}\u{a}\u{3c}p\u{3e}\u{a}\u{e3}\u{81}\u{93}\u{e3}\u{81}\u{ae}\u{e9}\u{8d}\u{b5}\u{e3}\u{82}\u{92}\u{e3}\u{83}\u{a1}\u{e3}\u{83}\u{bc}\u{e3}\u{83}\u{ab}\u{e3}\u{81}\u{aa}\u{e3}\u{81}\u{a9}\u{e3}\u{81}\u{a7}\u{e3}\u{83}\u{91}\u{e3}\u{83}\u{bc}\u{e3}\u{83}\u{88}\u{e3}\u{83}\u{8a}\u{e3}\u{83}\u{bc}\u{e3}\u{81}\u{ab}\u{e4}\u{bc}\u{9d}\u{e3}\u{81}\u{88}\u{e3}\u{81}\u{be}\u{e3}\u{81}\u{99}:\u{a}\u{3c}br\u{3e}\u{a}\u{3c}textarea class=\u{27}code-text\u{27} cols=\u{27}140\u{27} id=\u{27}mykey\u{27} readonly rows=\u{27}8\u{27}\u{3e}\u{3c}\u{2f}textarea\u{3e}\u{a}\u{3c}br\u{3e}\u{a}\u{3c}button id=\u{27}create\u{27}\u{3e}\u{e8}\u{87}\u{aa}\u{e5}\u{88}\u{86}\u{e3}\u{81}\u{ae}\u{e9}\u{8d}\u{b5}\u{e3}\u{82}\u{92}\u{e6}\u{9b}\u{b4}\u{e6}\u{96}\u{b0}\u{e3}\u{81}\u{99}\u{e3}\u{82}\u{8b}\u{3c}\u{2f}button\u{3e}\u{a}\u{3c}\u{2f}p\u{3e}\u{a}\u{3c}h2\u{3e}\u{e3}\u{83}\u{91}\u{e3}\u{83}\u{bc}\u{e3}\u{83}\u{88}\u{e3}\u{83}\u{8a}\u{e3}\u{83}\u{bc}\u{e3}\u{81}\u{ae}\u{e9}\u{8d}\u{b5}\u{3c}\u{2f}h2\u{3e}\u{a}\u{3c}p\u{3e}\u{a}\u{e3}\u{81}\u{93}\u{e3}\u{81}\u{93}\u{e3}\u{81}\u{ab}\u{e3}\u{80}\u{81}\u{e3}\u{83}\u{91}\u{e3}\u{83}\u{bc}\u{e3}\u{83}\u{88}\u{e3}\u{83}\u{8a}\u{e3}\u{83}\u{bc}\u{e3}\u{81}\u{8b}\u{e3}\u{82}\u{89}\u{e4}\u{bc}\u{9d}\u{e3}\u{81}\u{88}\u{e3}\u{82}\u{89}\u{e3}\u{82}\u{8c}\u{e3}\u{81}\u{9f}\u{e9}\u{8d}\u{b5}\u{e3}\u{82}\u{92}\u{e8}\u{b2}\u{bc}\u{e3}\u{82}\u{8a}\u{e4}\u{bb}\u{98}\u{e3}\u{81}\u{91}\u{e3}\u{81}\u{be}\u{e3}\u{81}\u{99}\u{a}\u{3c}br\u{3e}\u{a}\u{3c}textarea class=\u{27}code-text\u{27} cols=\u{27}140\u{27} id=\u{27}partnerskey\u{27} rows=\u{27}8\u{27}\u{3e}\u{3c}\u{2f}textarea\u{3e}\u{a}\u{3c}br\u{3e}\u{a}\u{3c}button id=\u{27}import\u{27}\u{3e}\u{e3}\u{83}\u{91}\u{e3}\u{82}\u{b9}\u{e3}\u{83}\u{af}\u{e3}\u{83}\u{bc}\u{e3}\u{83}\u{89}\u{e3}\u{82}\u{92}\u{e7}\u{94}\u{9f}\u{e6}\u{88}\u{90}\u{e3}\u{81}\u{99}\u{e3}\u{82}\u{8b}\u{3c}\u{2f}button\u{3e}\u{a}\u{3c}\u{2f}p\u{3e}\u{a}\u{3c}h2\u{3e}\u{e3}\u{83}\u{91}\u{e3}\u{82}\u{b9}\u{e3}\u{83}\u{af}\u{e3}\u{83}\u{bc}\u{e3}\u{83}\u{89}\u{3c}\u{2f}h2\u{3e}\u{a}\u{3c}p\u{3e}\u{a}\u{e4}\u{bb}\u{a5}\u{e4}\u{b8}\u{8b}\u{e3}\u{81}\u{ae}\u{e3}\u{83}\u{91}\u{e3}\u{82}\u{b9}\u{e3}\u{83}\u{af}\u{e3}\u{83}\u{bc}\u{e3}\u{83}\u{89}\u{e3}\u{81}\u{af}\u{e6}\u{b1}\u{ba}\u{e3}\u{81}\u{97}\u{e3}\u{81}\u{a6}\u{e3}\u{82}\u{a4}\u{e3}\u{83}\u{b3}\u{e3}\u{82}\u{bf}\u{e3}\u{83}\u{bc}\u{e3}\u{83}\u{8d}\u{e3}\u{83}\u{83}\u{e3}\u{83}\u{88}\u{e3}\u{81}\u{aa}\u{e3}\u{81}\u{a9}\u{e3}\u{81}\u{ab}\u{e6}\u{b5}\u{81}\u{e3}\u{81}\u{97}\u{e3}\u{81}\u{a6}\u{e3}\u{81}\u{af}\u{e3}\u{81}\u{84}\u{e3}\u{81}\u{91}\u{e3}\u{81}\u{be}\u{e3}\u{81}\u{9b}\u{e3}\u{82}\u{93}:\u{a}\u{3c}br\u{3e}\u{a}\u{3c}label for=\u{27}password0\u{27}\u{3e}\u{e3}\u{83}\u{91}\u{e3}\u{82}\u{b9}\u{e3}\u{83}\u{af}\u{e3}\u{83}\u{bc}\u{e3}\u{83}\u{89} #0:\u{3c}\u{2f}label\u{3e}\u{a}\u{3c}input class=\u{27}code-text\u{27} id=\u{27}password0\u{27} readonly size=\u{27}50\u{27} type=\u{27}text\u{27} value=\u{27}\u{27}\u{3e}\u{a}\u{3c}br\u{3e}\u{a}\u{3c}label for=\u{27}password1\u{27}\u{3e}\u{e3}\u{83}\u{91}\u{e3}\u{82}\u{b9}\u{e3}\u{83}\u{af}\u{e3}\u{83}\u{bc}\u{e3}\u{83}\u{89} #1:\u{3c}\u{2f}label\u{3e}\u{a}\u{3c}input class=\u{27}code-text\u{27} id=\u{27}password1\u{27} readonly size=\u{27}50\u{27} type=\u{27}text\u{27} value=\u{27}\u{27}\u{3e}\u{a}\u{3c}br\u{3e}\u{a}\u{3c}label for=\u{27}password2\u{27}\u{3e}\u{e3}\u{83}\u{91}\u{e3}\u{82}\u{b9}\u{e3}\u{83}\u{af}\u{e3}\u{83}\u{bc}\u{e3}\u{83}\u{89} #2:\u{3c}\u{2f}label\u{3e}\u{a}\u{3c}input class=\u{27}code-text\u{27} id=\u{27}password2\u{27} readonly size=\u{27}50\u{27} type=\u{27}text\u{27} value=\u{27}\u{27}\u{3e}\u{a}\u{3c}br\u{3e}\u{a}\u{3c}label for=\u{27}password3\u{27}\u{3e}\u{e3}\u{83}\u{91}\u{e3}\u{82}\u{b9}\u{e3}\u{83}\u{af}\u{e3}\u{83}\u{bc}\u{e3}\u{83}\u{89} #3:\u{3c}\u{2f}label\u{3e}\u{a}\u{3c}input class=\u{27}code-text\u{27} id=\u{27}password3\u{27} readonly size=\u{27}50\u{27} type=\u{27}text\u{27} value=\u{27}\u{27}\u{3e}\u{a}\u{3c}br\u{3e}\u{a}\u{3c}label for=\u{27}password4\u{27}\u{3e}\u{e3}\u{83}\u{91}\u{e3}\u{82}\u{b9}\u{e3}\u{83}\u{af}\u{e3}\u{83}\u{bc}\u{e3}\u{83}\u{89} #4:\u{3c}\u{2f}label\u{3e}\u{a}\u{3c}input class=\u{27}code-text\u{27} id=\u{27}password4\u{27} readonly size=\u{27}50\u{27} type=\u{27}text\u{27} value=\u{27}\u{27}\u{3e}\u{a}\u{3c}\u{2f}p\u{3e}\u{a}\u{3c}h2\u{3e}\u{e3}\u{83}\u{80}\u{e3}\u{82}\u{a4}\u{e3}\u{82}\u{b8}\u{e3}\u{82}\u{a7}\u{e3}\u{82}\u{b9}\u{e3}\u{83}\u{88}\u{3c}\u{2f}h2\u{3e}\u{a}\u{3c}p\u{3e}\u{a}\u{e3}\u{83}\u{91}\u{e3}\u{82}\u{b9}\u{e3}\u{83}\u{af}\u{e3}\u{83}\u{bc}\u{e3}\u{83}\u{89}\u{e7}\u{94}\u{9f}\u{e6}\u{88}\u{90}\u{e5}\u{be}\u{8c}\u{e3}\u{80}\u{81}\u{e3}\u{81}\u{93}\u{e3}\u{81}\u{ae}\u{e6}\u{96}\u{87}\u{e5}\u{ad}\u{97}\u{e5}\u{88}\u{97}\u{e3}\u{82}\u{92}\u{e3}\u{83}\u{a1}\u{e3}\u{83}\u{bc}\u{e3}\u{83}\u{ab}\u{e3}\u{81}\u{aa}\u{e3}\u{81}\u{a9}\u{e3}\u{81}\u{a7}\u{e3}\u{83}\u{91}\u{e3}\u{83}\u{bc}\u{e3}\u{83}\u{88}\u{e3}\u{83}\u{8a}\u{e3}\u{83}\u{bc}\u{e3}\u{81}\u{ab}\u{e4}\u{bc}\u{9d}\u{e3}\u{81}\u{88}\u{e3}\u{81}\u{be}\u{e3}\u{81}\u{99}:\u{a}\u{3c}br\u{3e}\u{a}\u{3c}input class=\u{27}code-text\u{27} id=\u{27}digest\u{27} readonly size=\u{27}50\u{27} type=\u{27}text\u{27} value=\u{27}\u{27}\u{3e}\u{a}\u{3c}br\u{3e}\u{a}\u{e3}\u{83}\u{91}\u{e3}\u{83}\u{bc}\u{e3}\u{83}\u{88}\u{e3}\u{83}\u{8a}\u{e3}\u{83}\u{bc}\u{e3}\u{81}\u{ae}\u{e3}\u{83}\u{80}\u{e3}\u{82}\u{a4}\u{e3}\u{82}\u{b8}\u{e3}\u{82}\u{a7}\u{e3}\u{82}\u{b9}\u{e3}\u{83}\u{88}\u{e3}\u{81}\u{a8}\u{e3}\u{80}\u{81}\u{e3}\u{81}\u{82}\u{e3}\u{81}\u{aa}\u{e3}\u{81}\u{9f}\u{e3}\u{81}\u{ae}\u{e3}\u{83}\u{80}\u{e3}\u{82}\u{a4}\u{e3}\u{82}\u{b8}\u{e3}\u{82}\u{a7}\u{e3}\u{82}\u{b9}\u{e3}\u{83}\u{88}\u{e3}\u{81}\u{8c}\u{e4}\u{b8}\u{80}\u{e8}\u{87}\u{b4}\u{e3}\u{81}\u{99}\u{e3}\u{82}\u{8b}\u{e5}\u{a0}\u{b4}\u{e5}\u{90}\u{88}\u{e3}\u{80}\u{81}\u{e3}\u{83}\u{91}\u{e3}\u{82}\u{b9}\u{e3}\u{83}\u{af}\u{e3}\u{83}\u{bc}\u{e3}\u{83}\u{89}\u{e3}\u{82}\u{82}\u{e5}\u{90}\u{8c}\u{e3}\u{81}\u{98}\u{e3}\u{81}\u{ab}\u{e3}\u{81}\u{aa}\u{e3}\u{81}\u{a3}\u{e3}\u{81}\u{a6}\u{e3}\u{81}\u{84}\u{e3}\u{81}\u{be}\u{e3}\u{81}\u{99}\u{e3}\u{80}\u{82}\u{a}\u{3c}br\u{3e}\u{a}\u{e3}\u{82}\u{b3}\u{e3}\u{83}\u{94}\u{e3}\u{83}\u{9a}\u{e3}\u{83}\u{9f}\u{e3}\u{82}\u{b9}\u{e3}\u{81}\u{aa}\u{e3}\u{81}\u{a9}\u{e3}\u{81}\u{8c}\u{e3}\u{81}\u{82}\u{e3}\u{82}\u{8b}\u{e5}\u{a0}\u{b4}\u{e5}\u{90}\u{88}\u{e3}\u{80}\u{81}\u{e3}\u{83}\u{91}\u{e3}\u{83}\u{bc}\u{e3}\u{83}\u{88}\u{e3}\u{83}\u{8a}\u{e3}\u{83}\u{bc}\u{e3}\u{81}\u{ae}\u{e3}\u{83}\u{80}\u{e3}\u{82}\u{a4}\u{e3}\u{82}\u{b8}\u{e3}\u{82}\u{a7}\u{e3}\u{82}\u{b9}\u{e3}\u{83}\u{88}\u{e3}\u{81}\u{a8}\u{e3}\u{80}\u{81}\u{e3}\u{81}\u{82}\u{e3}\u{81}\u{aa}\u{e3}\u{81}\u{9f}\u{e3}\u{81}\u{ae}\u{e3}\u{83}\u{80}\u{e3}\u{82}\u{a4}\u{e3}\u{82}\u{b8}\u{e3}\u{82}\u{a7}\u{e3}\u{82}\u{b9}\u{e3}\u{83}\u{88}\u{e3}\u{81}\u{8c}\u{e4}\u{b8}\u{80}\u{e8}\u{87}\u{b4}\u{e3}\u{81}\u{97}\u{e3}\u{81}\u{be}\u{e3}\u{81}\u{9b}\u{e3}\u{82}\u{93}\u{e3}\u{80}\u{82}\u{a}\u{3c}\u{2f}p\u{3e}\u{a}\u{3c}script\u{3e}\u{a}  main();\u{a}\u{3c}\u{2f}script\u{3e}\u{a}".replace( orgkey, newkey );
+    id("dl").href="data:text/html;base64,"+btoa(srcText);
   };
 </script>
-<style>
-  h1{
-    border-top : solid 2px #bbb;
-    border-left : solid 16px #bbb;
-    background-color: #f8f8f8;
-  }
-  h2{
-    border-top : solid 2px #bbb;
-    border-left : solid 8px #bbb;
-    background-color: #f8f8f8;
-  }
-  h3{
-    border-top : solid 1px #bbb;
-    border-left : solid 4px #bbb;
-    background-color: #f8f8f8;
-  }
-  h4{
-    background-color: #f8f8f8;
-  }
-  .code-text{
-    font-family:monospace;
-    font-size:11pt;
-  }
-  button{
-    font-size:11pt;
-    font-weight:bold;
-  }
-</style>
 </head>
-<h1>鍵交換支援</h1>
-<h2>自分の鍵</h2>
+<h1>鍵交換支援！</h1>
 <p>
-この鍵をメールなどでパートナーに伝えます:
-<br>
-<textarea class='code-text' cols='140' id='mykey' readonly rows='8'></textarea>
-<br>
-<button id='create'>自分の鍵を更新する</button>
+以下のリンクをクリックし、ローカル環境でダウンロードした HTML を開いてください。
 </p>
-<h2>パートナーの鍵</h2>
 <p>
-ここに、パートナーから伝えられた鍵を貼り付けます
-<br>
-<textarea class='code-text' cols='140' id='partnerskey' rows='8'></textarea>
-<br>
-<button id='import'>パスワードを生成する</button>
-</p>
-<h2>パスワード</h2>
-<p>
-以下のパスワードは決してインターネットなどに流してはいけません:
-<br>
-<label for='password0'>パスワード #0:</label>
-<input class='code-text' id='password0' readonly size='50' type='text' value=''>
-<br>
-<label for='password1'>パスワード #1:</label>
-<input class='code-text' id='password1' readonly size='50' type='text' value=''>
-<br>
-<label for='password2'>パスワード #2:</label>
-<input class='code-text' id='password2' readonly size='50' type='text' value=''>
-<br>
-<label for='password3'>パスワード #3:</label>
-<input class='code-text' id='password3' readonly size='50' type='text' value=''>
-<br>
-<label for='password4'>パスワード #4:</label>
-<input class='code-text' id='password4' readonly size='50' type='text' value=''>
-</p>
-<h2>ダイジェスト</h2>
-<p>
-パスワード生成後、この文字列をメールなどでパートナーに伝えます:
-<br>
-<input class='code-text' id='digest' readonly size='50' type='text' value=''>
-<br>
-パートナーのダイジェストと、あなたのダイジェストが一致する場合、パスワードも同じになっています。
-<br>
-コピペミスなどがある場合、パートナーのダイジェストと、あなたのダイジェストが一致しません。
+<a download='key-exchange-helper.html' href='' id='dl'>key-exchange-helper.html</a>
 </p>
 <script>
   main();

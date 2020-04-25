@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<head>
+<meta charset='utf-8'>
+<script>
+  'use strict';
+  const jwtStorePassword = () => {
+    return "2vHf9XS0qAxVtyZF4bx02PsHepm4Z2lb";
+  };
+  const storageKey = () => {
+    return window.location.href + "nabetani-jwt-store.7ohn8p94ao9xd35ngq2afs5nk";
+  };
+  const aesCtrCounter = () => {
+    return new Uint8Array([28, 218, 254, 122, 26, 138, 159, 102, 32, 253, 52, 126, 127, 200, 218, 90]);
+  };
+  const getKey = async () => {
+    const salt = "salt[24aii8j6l2172ipu570jm510w]";
+    let passwordUint8Array = (new TextEncoder()).encode(salt + jwtStorePassword());
+    let digest = await crypto.subtle.digest(
+      { name: 'SHA-256' },
+      passwordUint8Array
+    );
+    let key = await crypto.subtle.importKey(
+      "raw",
+      digest,
+      { name: "AES-CTR", },
+      false,
+      ["encrypt", "decrypt"]
+    )
+    return key;
+  };
+  const encryptA = async (msg) => {
+    let te = new TextEncoder()
+    let e = await crypto.subtle.encrypt(
+      {
+        name: "AES-CTR",
+        counter: aesCtrCounter(),
+        length: 64
+      },
+      await getKey(),
+      te.encode(msg)
+    );
+    return JSON.stringify(Array.from(new Uint8Array(e)));
+  };
+  const decryptA = async (ciphertext) => {
+    let key = await getKey();
+    let data = (new Uint8Array(JSON.parse(ciphertext))).buffer;
+    let bytes = await crypto.subtle.decrypt(
+      {
+        name: "AES-CTR",
+        counter: aesCtrCounter(),
+        length: 64
+      },
+      key,
+      data
+    );
+    let r = (new TextDecoder()).decode(bytes);
+    return r;
+  }
+  const getJwt = async () => {
+    let e = localStorage.getItem(storageKey());
+    if (e == null || e == undefined) {
+      return null;
+    }
+    return await decryptA(e);
+  };
+  const setJwt = async (o) => {
+    let p = JSON.stringify(o);
+    let e = await encryptA(p);
+    localStorage.setItem(storageKey(), e);
+  };
+  let global_keyPair = null;
+  const createMyKey = async (e) => {
+    let jwkText = await getJwt();
+    if (jwkText) {
+      const jwks = JSON.parse(jwkText);
+      let privateKey = await crypto.subtle.importKey(
+        'jwk',
+        jwks["private"],
+        { name: 'ECDH', namedCurve: 'P-521' },
+        true,
+        ['deriveBits']
+      );
+      let publicKey = await crypto.subtle.importKey(
+        'jwk',
+        jwks["public"],
+        { name: 'ECDH', namedCurve: 'P-521' },
+        true,
+        []
+      );
+      const keyPair = { privateKey: privateKey, publicKey: publicKey };
+      global_keyPair = keyPair;
+      let publicJwk = await crypto.subtle.exportKey('jwk', keyPair.publicKey);
+      let text = JSON.stringify(publicJwk, null, "\t");
+      e.value = text;
+    } else {
+      let keyPair = await crypto.subtle.generateKey(
+        { name: 'ECDH', namedCurve: 'P-521' },
+        true,
+        ['deriveBits']
+      );
+      global_keyPair = keyPair;
+      let privateJwk = await crypto.subtle.exportKey('jwk', keyPair.privateKey);
+      let publicJwk = await crypto.subtle.exportKey('jwk', keyPair.publicKey);
+      await setJwt({
+        private: privateJwk,
+        public: publicJwk
+      });
+      let text = JSON.stringify(publicJwk, null, "\t");
+      e.value = text;
+    }
+  };
+  const id = (str) => {
+    return document.getElementById(str);
+  };
+  const makePassword = async (i, buffer0) => {
+    let ary = [i].concat(Array.from(new Uint8Array(buffer0)));
+    let buffer = (new Uint8Array(ary)).buffer;
+    const raw = await crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint32Array(raw));
+    const chars = "34679acdefghjkmnprstuvwxyzACDEFGHJKLMNPQRTUVWXY";
+    const tostr = (b) => {
+      let s = "";
+      for (let i = 0; i < 5; i++) {
+        s += chars[b % chars.length];
+        b = (b / chars.length) | 0;
+      };
+      return s;
+    };
+    return hashArray.map(b => tostr(b)).join("").substr(0, 20);
+  };
+  const digest = async (buffer) => {
+    const raw = await crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint16Array(raw));
+    return hashArray.slice(0, 4).map(b => b.toString(16).padStart(4, '0')).join('-');
+  };
+  const importFromDom = async (o, domId) => {
+    const jwk = JSON.parse(id(domId).value);
+    let kp = await crypto.subtle.importKey(
+      'jwk',
+      jwk,
+      { name: 'ECDH', namedCurve: 'P-521' },
+      false,
+      []
+    );
+    let buffer = await crypto.subtle.deriveBits(
+      {
+        name: "ECDH",
+        namedCurve: "P-521", //can be "P-256", "P-384", or "P-521"
+        public: kp
+      },
+      global_keyPair.privateKey, //your ECDH private key from generateKey or importKey
+      528 //the number of bits you want to derive
+    );
+    for (let i of [0, 1, 2, 3, 4]) {
+      id(`password${i}`).value = await makePassword(i, buffer);
+    }
+    id("digest").value = await digest(buffer);
+  }
+  const main = () => {
+    if (!jwtStorePassword()) {
+      alert('you must change function "jwtStorePassword()" to return your private password.');
+      return;
+    }
+    let mykey = id("mykey");
+    createMyKey(mykey);
+    id("create").onclick = () => {
+      localStorage.removeItem(storageKey())
+      createMyKey(mykey);
+    };
+    id("import").onclick = () => {
+      let o = {};
+      importFromDom(o, "partnerskey");
+    }
+  };
+</script>
+<style>
+  h1{
+    border-top : solid 2px #bbb;
+    border-left : solid 16px #bbb;
+    background-color: #f8f8f8;
+  }
+  h2{
+    border-top : solid 2px #bbb;
+    border-left : solid 8px #bbb;
+    background-color: #f8f8f8;
+  }
+  h3{
+    border-top : solid 1px #bbb;
+    border-left : solid 4px #bbb;
+    background-color: #f8f8f8;
+  }
+  h4{
+    background-color: #f8f8f8;
+  }
+  .code-text{
+    font-family:monospace;
+    font-size:11pt;
+  }
+  button{
+    font-size:11pt;
+    font-weight:bold;
+  }
+</style>
+</head>
+<h1>鍵交換支援</h1>
+<h2>自分の鍵</h2>
+<p>
+この鍵をメールなどでパートナーに伝えます:
+<br>
+<textarea class='code-text' cols='140' id='mykey' readonly rows='8'></textarea>
+<br>
+<button id='create'>自分の鍵を更新する</button>
+</p>
+<h2>パートナーの鍵</h2>
+<p>
+ここに、パートナーから伝えられた鍵を貼り付けます
+<br>
+<textarea class='code-text' cols='140' id='partnerskey' rows='8'></textarea>
+<br>
+<button id='import'>パスワードを生成する</button>
+</p>
+<h2>パスワード</h2>
+<p>
+以下のパスワードは決してインターネットなどに流してはいけません:
+<br>
+<label for='password0'>パスワード #0:</label>
+<input class='code-text' id='password0' readonly size='50' type='text' value=''>
+<br>
+<label for='password1'>パスワード #1:</label>
+<input class='code-text' id='password1' readonly size='50' type='text' value=''>
+<br>
+<label for='password2'>パスワード #2:</label>
+<input class='code-text' id='password2' readonly size='50' type='text' value=''>
+<br>
+<label for='password3'>パスワード #3:</label>
+<input class='code-text' id='password3' readonly size='50' type='text' value=''>
+<br>
+<label for='password4'>パスワード #4:</label>
+<input class='code-text' id='password4' readonly size='50' type='text' value=''>
+</p>
+<h2>ダイジェスト</h2>
+<p>
+パスワード生成後、この文字列をメールなどでパートナーに伝えます:
+<br>
+<input class='code-text' id='digest' readonly size='50' type='text' value=''>
+<br>
+パートナーのダイジェストと、あなたのダイジェストが一致する場合、パスワードも同じになっています。
+<br>
+コピペミスなどがある場合、パートナーのダイジェストと、あなたのダイジェストが一致しません。
+</p>
+<script>
+  main();
+</script>
