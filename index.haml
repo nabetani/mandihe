@@ -18,19 +18,38 @@
           u  = (u/chars.length) | 0;
         }
       }
-      console.log(r);
       return r;
     };
+    const replaceKeys = (text, orgKeys)=>{
+      for( let o of orgKeys ){
+        text = text.replace( o, createNewKey() );
+      }
+      return text
+    };
     const main = ()=>{
-      const orgkey = "2vHf9XS0qAxVtyZF4bx02PsHepm4Z2lb";
+      const orgKeys =[
+        "2vHf9XS0qAxVtyZF4bx02PsHepm4Z2lb",
+        "ulMcqdb0WfCWXcitF2dyQFoPQYbN5ZhR",
+        "320bZR9bxl8uwEvafFwv1yBETMyF3u0J",
+      ];
       const newkey = createNewKey();
-      const srcText = "#{excaped_file('key-exchange-helper.html')}".replace( orgkey, newkey );
+      const srcText = replaceKeys( "#{excaped_file('key-exchange-helper.html')}", orgKeys )
       id("dl").href="data:text/html;base64,"+btoa(srcText);
     };
-%h1 鍵交換支援！
+%h1 鍵交換支援
 %p
-  以下のリンクをクリックし、ローカル環境でダウンロードした HTML を開いてください。
+  以下のリンクを右クリックなどして「リンク先を別名で保存」などでダウンロードしたうえ、ローカル環境でダウンロードした HTML を開いてください。
 %p
   %a#dl{ href:"", download:"key-exchange-helper.html" } key-exchange-helper.html
+%p
+  以下のブラウザで動作することを確認をしました:
+%ul
+  %li Microsoft Edge バージョン 81.0.416.64 on macOS
+  %li Google Chrome バージョン 81.0.4044.122 on macOS
+  %li Firefox Browser 75.0 on macOS
+%p
+  以下のブラウザで動作<b>しない</b>ことを確認をしました:
+%ul
+  %li Safari バージョン13.1 (15609.1.20.111.8) on macOS
 :javascript
   main();

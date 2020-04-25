@@ -7,13 +7,13 @@
       return "2vHf9XS0qAxVtyZF4bx02PsHepm4Z2lb";
     };
     const storageKey = () => {
-      return window.location.href + "nabetani-jwt-store.7ohn8p94ao9xd35ngq2afs5nk";
+      return window.location.href + "nabetani-jwt-store.320bZR9bxl8uwEvafFwv1yBETMyF3u0J";
     };
     const aesCtrCounter = () => {
       return new Uint8Array([28, 218, 254, 122, 26, 138, 159, 102, 32, 253, 52, 126, 127, 200, 218, 90]);
     };
     const getKey = async () => {
-      const salt = "salt[24aii8j6l2172ipu570jm510w]";
+      const salt = "salt[ulMcqdb0WfCWXcitF2dyQFoPQYbN5ZhR]";
       let passwordUint8Array = (new TextEncoder()).encode(salt + jwtStorePassword());
       let digest = await crypto.subtle.digest(
         { name: 'SHA-256' },
@@ -200,14 +200,15 @@
       font-weight:bold;
     }
 %h1 鍵交換支援
-%h2 自分の鍵
+%h2 自分の公開鍵
 %p
   この鍵をメールなどでパートナーに伝えます:
   %br
   %textarea#mykey.code-text{ rows:8, cols:140, readonly:true }
   %br
   %button#create 自分の鍵を更新する
-%h2 パートナーの鍵
+  ※ 公開鍵のやり取りは平文で構いません。
+%h2 パートナーの公開鍵
 %p
   ここに、パートナーから伝えられた鍵を貼り付けます
   %br
@@ -216,7 +217,7 @@
   %button#import パスワードを生成する
 %h2 パスワード
 %p
-  以下のパスワードは決してインターネットなどに流してはいけません:
+  以下のパスワードは秘密の情報です。平文のメールや SNS などで人に伝えてはいけません。
   -5.times do |ix|
     %br
     -text_id="password#{ix}"
@@ -231,5 +232,7 @@
   パートナーのダイジェストと、あなたのダイジェストが一致する場合、パスワードも同じになっています。
   %br
   コピペミスなどがある場合、パートナーのダイジェストと、あなたのダイジェストが一致しません。
+  %br
+  ※ ダイジェストのやり取りは平文で構いません。
 :javascript
   main();
