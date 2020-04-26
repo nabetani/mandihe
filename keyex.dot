@@ -1,0 +1,46 @@
+digraph G {
+  label="key exchange";
+  graph [ dpi = 300];
+  graph [rankdir = LR];
+  subgraph cluster_alice{
+    label="Alice";
+    generateKey_a[ label="crypto.subtle.generateKey" ];
+    generateKey_a->publicKey_a;
+    generateKey_a->privateKey_a;
+    publicKey_a[label="public key" shape="box"];
+    privateKey_a[label="private key" shape="box"];
+    deriveBits_a[label="deriveBits"];
+    deriveBits_a->bits_a->sha_d_a->digest_a;
+    bits_a->sha_p_a;
+    salt_a->sha_p_a->shared_pw_a;
+    sha_d_a[label="SHA256"];
+    sha_p_a[label="SHA256"];
+    bits_a[label="bits", shape="box"];
+    salt_a[label="salt", shape="box"];
+    digest_a[label="digest", shape="box"];
+    shared_pw_a[label="shared password", shape="box"];
+  }
+  subgraph cluster_bob{
+    label="Bob";
+    generateKey_b[ label="crypto.subtle.generateKey" ];
+    generateKey_b->publicKey_b;
+    generateKey_b->privateKey_b;
+    publicKey_b[label="public key" shape="box"];
+    privateKey_b[label="private key" shape="box"];
+    deriveBits_b[label="deriveBits"];
+    deriveBits_b->bits_b->sha_d_b->digest_b;
+    bits_b->sha_p_b;
+    salt_b->sha_p_b->shared_pw_b;
+    sha_d_b[label="SHA256"];
+    sha_p_b[label="SHA256"];
+    bits_b[label="bits", shape="box"];
+    salt_b[label="salt", shape="box"];
+    digest_b[label="digest", shape="box"];
+    shared_pw_b[label="shared password", shape="box"];
+  }
+  privateKey_a->deriveBits_a;
+  publicKey_b->deriveBits_a;
+
+  privateKey_b->deriveBits_b;
+  publicKey_a->deriveBits_b;
+}

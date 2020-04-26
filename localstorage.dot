@@ -1,0 +1,40 @@
+digraph G {
+  graph [ dpi = 300];
+  compound=true;
+  label="key exchange";
+  graph [rankdir = LR];
+  subgraph cluster_index{
+    label="index.html";
+    getRandomValue[label="crypto.getRandomValues"];
+    getRandomValue->password_i;
+    password_i[label="password" shape="box"];
+  }
+  subgraph cluster_key_exchange_helper{
+    label="key-exchange-helper.html";
+    password_k[label="password" shape="box"];
+    generateKey_a[ label="crypto.subtle.generateKey" ];
+    generateKey_a->publicKey_a;
+    generateKey_a->privateKey_a;
+    subgraph cluster_keys{
+      label="keys";
+      publicKey_a[label="public key" shape="box"];
+      privateKey_a[label="private key" shape="box"];
+    }
+    aes_e[label="AES-CTR"];
+    publicKey_a->aes_e[ltail=cluster_keys];
+    password_k->aes_e;
+    aes_e->ekeys_e;
+    ekeys_e[label="encrypted keys" shape=box];
+    ekeys_e->localStorage;
+    localStorage[shape="cylinder"];
+    ekeys_d[label="encrypted keys" shape=box];
+    localStorage->ekeys_d;
+    ekeys_d->aes_d;
+    password_k->aes_d;
+    aes_d->publicKey_a[lhead=cluster_keys];
+    {rank = same; aes_d; aes_e; }
+    {rank = same; ekeys_d; ekeys_e; }
+
+  }
+  password_i->password_k;
+}
