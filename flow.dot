@@ -8,29 +8,37 @@ digraph G {
     subgraph cluster_a_index {
       label = "index.html";
       getRandomValues_a;
-      lspw_a_i;
-      getRandomValues_a[label="crypto.getRandomValues"];
+      lspw_a_i[label="password for localStorage"];
+      getRandomValues_a[label="crypto.getRandomValues", shape="oval"];
     }
-    subgraph cluster_keh {
+    subgraph cluster_a_keh {
       label = "key-exchange-helper.html";
-      lspw_a_c;
-      generateKey_a[label="crypto.subtle.generateKey"];
+      lspw_a_c[label="password for localStorage"];
+      generateKey_a[label="crypto.subtle.generateKey", shape="oval"];
       subgraph cluster_keys_a{
         label = "keys";
-        privateKey_a;
-        publicKey_a;
+        privateKey_a[label="private key"];
+        publicKey_a[label="public key"];
       }
-      eKeys_a;
-      aes_enc_a;
-      aes_dec_a;
-      localStorage_a;
+      eKeys_a[label="encrypted keys"];
+      aes_enc_a[label="AES-CTR", shape="oval"];
+      aes_dec_a[label="AES-CTR", shape="oval"];
+      localStorage_a[label="localStorage"];
+      deriveBits_a[label="deriveBits", shape="oval"];
       deriveBits_a->bits_a;
-      bits_a->digest_a;
-      bits_a->shared_pw_a;
+      bits_a[label="bit sequence"];
+      bits_a->sha_d_a->digest_a;
+      bits_a->sha_p_a->shared_pw_a;
+      salt_a->sha_p_a;
+      salt_a[label="salt"];
+      digest_a[label="digest"];
+      sha_d_a[label="SHA-256", shape="oval"];
+      sha_p_a[label="SHA-256", shape="oval"];
+      shared_pw_a[label="shared password"];
     }    
     getRandomValues_a->lspw_a_i;
     lspw_a_i->lspw_a_c;
-    lspw_a_i->lspw_a_c[ ltail=cluster_a_index lhead=cluster_keh];
+    lspw_a_i->lspw_a_c[ ltail=cluster_a_index lhead=cluster_a_keh];
     generateKey_a->privateKey_a;
     generateKey_a->publicKey_a;
     privateKey_a->aes_enc_a->eKeys_a[ltail=cluster_keys_a];
@@ -45,29 +53,37 @@ digraph G {
     subgraph cluster_b_index {
       label = "index.html";
       getRandomValues_b;
-      lspw_b_i;
-      getRandomValues_b[label="crypto.getRandomValues"];
+      lspw_b_i[label="password for localStorage"];
+      getRandomValues_b[label="crypto.getRandomValues", shape="oval"];
     }
-    subgraph cluster_keh {
+    subgraph cluster_b_keh {
       label = "key-exchange-helper.html";
-      lspw_b_c;
-      generateKey_b[label="crypto.subtle.generateKey"];
+      lspw_b_c[label="password for localStorage"];
+      generateKey_b[label="crypto.subtle.generateKey", shape="oval"];
       subgraph cluster_keys_b{
         label = "keys";
-        privateKey_b;
-        publicKey_b;
+        privateKey_b[label="private key"];
+        publicKey_b[label="public key"];
       }
-      eKeys_b;
-      aes_enc_b;
-      aes_dec_b;
-      localStorage_b;
+      eKeys_b[label="encrypted keys"];
+      aes_enc_b[label="AES-CTR", shape="oval"];
+      aes_dec_b[label="AES-CTR", shape="oval"];
+      localStorage_b[label="localStorage"];
+      deriveBits_b[label="deriveBits", shape="oval"];
       deriveBits_b->bits_b;
-      bits_b->digest_b;
-      bits_b->shared_pw_b;
-    }
+      bits_b[label="bit sequence"];
+      bits_b->sha_d_b->digest_b;
+      bits_b->sha_p_b->shared_pw_b;
+      salt_b->sha_p_b;
+      salt_b[label="salt"];
+      digest_b[label="digest"];
+      sha_d_b[label="SHA-256", shape="oval"];
+      sha_p_b[label="SHA-256", shape="oval"];
+      shared_pw_b[label="shared password"];
+    }    
     getRandomValues_b->lspw_b_i;
     lspw_b_i->lspw_b_c;
-    lspw_b_i->lspw_b_c[ ltail=cluster_b_index lhead=cluster_keh];
+    lspw_b_i->lspw_b_c[ ltail=cluster_b_index lhead=cluster_b_keh];
     generateKey_b->privateKey_b;
     generateKey_b->publicKey_b;
     privateKey_b->aes_enc_b->eKeys_b[ltail=cluster_keys_b];
