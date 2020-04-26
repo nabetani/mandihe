@@ -1,0 +1,86 @@
+digraph G {
+  compound=true;
+  graph [ dpi = 300];
+  graph [labeljust=l]
+  node [shape=box];
+  subgraph cluster_alice {
+    label = "Alice";
+    subgraph cluster_a_index {
+      label = "index.html";
+      getRandomValues_a;
+      lspw_a_i;
+      getRandomValues_a[label="crypto.getRandomValues"];
+    }
+    subgraph cluster_keh {
+      label = "key-exchange-helper.html";
+      lspw_a_c;
+      generateKey_a[label="crypto.subtle.generateKey"];
+      subgraph cluster_keys_a{
+        label = "keys";
+        privateKey_a;
+        publicKey_a;
+      }
+      eKeys_a;
+      aes_enc_a;
+      aes_dec_a;
+      localStorage_a;
+      deriveBits_a->bits_a;
+      bits_a->digest_a;
+      bits_a->shared_pw_a;
+    }    
+    getRandomValues_a->lspw_a_i;
+    lspw_a_i->lspw_a_c;
+    lspw_a_i->lspw_a_c[ ltail=cluster_a_index lhead=cluster_keh];
+    generateKey_a->privateKey_a;
+    generateKey_a->publicKey_a;
+    privateKey_a->aes_enc_a->eKeys_a[ltail=cluster_keys_a];
+    lspw_a_c->aes_enc_a;
+    eKeys_a->localStorage_a;
+    localStorage_a->aes_dec_a;
+    lspw_a_c->aes_dec_a;
+    aes_dec_a->publicKey_a[lhead=cluster_keys_a];
+  }
+  subgraph cluster_bob {
+    label = "Bob";
+    subgraph cluster_b_index {
+      label = "index.html";
+      getRandomValues_b;
+      lspw_b_i;
+      getRandomValues_b[label="crypto.getRandomValues"];
+    }
+    subgraph cluster_keh {
+      label = "key-exchange-helper.html";
+      lspw_b_c;
+      generateKey_b[label="crypto.subtle.generateKey"];
+      subgraph cluster_keys_b{
+        label = "keys";
+        privateKey_b;
+        publicKey_b;
+      }
+      eKeys_b;
+      aes_enc_b;
+      aes_dec_b;
+      localStorage_b;
+      deriveBits_b->bits_b;
+      bits_b->digest_b;
+      bits_b->shared_pw_b;
+    }
+    getRandomValues_b->lspw_b_i;
+    lspw_b_i->lspw_b_c;
+    lspw_b_i->lspw_b_c[ ltail=cluster_b_index lhead=cluster_keh];
+    generateKey_b->privateKey_b;
+    generateKey_b->publicKey_b;
+    privateKey_b->aes_enc_b->eKeys_b[ltail=cluster_keys_b];
+    lspw_b_c->aes_enc_b;
+    eKeys_b->localStorage_b;
+    localStorage_b->aes_dec_b;
+    lspw_b_c->aes_dec_b;
+    aes_dec_b->publicKey_b[lhead=cluster_keys_b];
+  }
+  privateKey_a->deriveBits_a[ltail=cluster_keys_a];
+  publicKey_b->deriveBits_a;
+
+  privateKey_b->deriveBits_b[ltail=cluster_keys_b];
+  publicKey_a->deriveBits_b;
+
+}
